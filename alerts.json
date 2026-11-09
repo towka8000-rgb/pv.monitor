@@ -1,0 +1,17 @@
+{
+  "emails": [
+    "towka8000@gmail.com",
+    "a8879p@gmail.com",
+    "mangler@vatsak.com.ua",
+    "magler@gmail.com"
+  ],
+  "telegram_token": "",
+  "telegram_chat_id": "",
+  "smtp_user": "towka8000@gmail.com",
+  "smtp_password": "ubbgknptdyjrqtkw",
+  "smtp_server": "smtp.gmail.com",
+  "smtp_port": 465,
+  "smtp_use_ssl": true,
+  "enable_email": true,
+  "enable_telegram": false
+}

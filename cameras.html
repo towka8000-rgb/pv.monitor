@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Видеонаблюдение — Мониторинг</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #1a1d23;
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+
+  header {
+    background: #111318;
+    border-bottom: 1px solid #2d3348;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 17px; font-weight: 600; color: #f1f5f9; letter-spacing: .3px; }
+  .header-sub { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+  .main-nav { display: flex; gap: 4px; }
+  .nav-link {
+    text-decoration: none; font-size: 13px; font-weight: 500;
+    padding: 6px 14px; border-radius: 6px; color: #64748b;
+    border: 1px solid transparent; transition: all .15s;
+  }
+  .nav-link:hover { color: #e2e8f0; background: #1e2330; border-color: #2d3348; }
+  .nav-active { color: #e2e8f0 !important; background: #1e2330 !important; border-color: #3b82f6 !important; }
+
+  .add-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .add-bar label { font-size: 12px; color: #94a3b8; margin-right: 2px; }
+  .add-bar input, .add-bar select {
+    background: #1e2330;
+    border: 1px solid #2d3348;
+    border-radius: 6px;
+    color: #e2e8f0;
+    font-size: 13px;
+    padding: 6px 10px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .add-bar input:focus, .add-bar select:focus { border-color: #3b82f6; }
+  input#cam-ip       { width: 140px; }
+  input#cam-location { width: 120px; }
+  input#cam-user     { width: 90px; }
+  input#cam-pass     { width: 90px; }
+  select#cam-brand   { width: 120px; cursor: pointer; }
+
+  .btn {
+    border: none; border-radius: 6px; cursor: pointer;
+    font-size: 13px; font-weight: 500; padding: 7px 14px;
+    transition: opacity .15s, background .15s;
+  }
+  .btn:hover { opacity: .85; }
+  .btn-primary { background: #3b82f6; color: #fff; }
+  .btn-refresh { background: #1e2330; color: #94a3b8; border: 1px solid #2d3348; }
+  .btn-sm      { padding: 4px 10px; font-size: 12px; }
+  .btn-danger  { background: #7f1d1d; color: #fca5a5; }
+  .btn-edit    { background: #1e2330; color: #94a3b8; border: 1px solid #2d3348; }
+
+  #cam-error-msg { font-size: 12px; color: #f87171; padding: 4px 8px; display: none; }
+
+  main { padding: 20px 24px; }
+
+  .table-wrap {
+    background: #111318;
+    border: 1px solid #2d3348;
+    border-radius: 10px;
+    overflow: hidden;
+    overflow-x: auto;
+  }
+  table { border-collapse: collapse; width: 100%; min-width: 960px; }
+  thead tr { background: #0d1017; }
+  th {
+    padding: 11px 14px; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .6px; color: #64748b;
+    white-space: nowrap; border-bottom: 1px solid #2d3348; text-align: left;
+  }
+  td {
+    padding: 10px 14px; font-size: 13px;
+    border-bottom: 1px solid #1e2330; white-space: nowrap; vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: #161b27; }
+
+  tr.color-green td  { background: rgba(34,197,94,.07); }
+  tr.color-yellow td { background: rgba(234,179,8,.08); }
+  tr.color-red td    { background: rgba(239,68,68,.10); }
+  tr.color-green:hover td  { background: rgba(34,197,94,.13); }
+  tr.color-yellow:hover td { background: rgba(234,179,8,.14); }
+  tr.color-red:hover td    { background: rgba(239,68,68,.16); }
+
+  .badge {
+    display: inline-block; border-radius: 4px;
+    font-size: 11px; font-weight: 600; padding: 2px 8px;
+  }
+  .badge-green  { background: rgba(34,197,94,.15);  color: #4ade80; }
+  .badge-yellow { background: rgba(234,179,8,.15);  color: #fde047; }
+  .badge-red    { background: rgba(239,68,68,.18);  color: #f87171; }
+  .badge-none   { background: #1e2330; color: #64748b; }
+
+  /* Бренд-бейдж */
+  .brand-badge {
+    display: inline-block; border-radius: 4px;
+    font-size: 10px; font-weight: 700; padding: 2px 7px;
+    text-transform: uppercase; letter-spacing: .5px;
+  }
+  .brand-hikvision { background: rgba(239,68,68,.15);  color: #f87171; }
+  .brand-dahua     { background: rgba(59,130,246,.15); color: #7dd3fc; }
+
+  .status-ok   { color: #4ade80; }
+  .status-warn { color: #fde047; }
+  .status-err  { color: #f87171; }
+  .status-poll { color: #64748b; font-style: italic; }
+
+  .spinner {
+    display: inline-block; width: 12px; height: 12px;
+    border: 2px solid #2d3348; border-top-color: #3b82f6;
+    border-radius: 50%; animation: spin .7s linear infinite;
+    vertical-align: middle; margin-right: 4px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .editable {
+    cursor: pointer; border-bottom: 1px dashed #2d3348; padding-bottom: 1px;
+  }
+  .editable:hover { border-bottom-color: #3b82f6; color: #93c5fd; }
+  .inline-input {
+    background: #1e2330; border: 1px solid #3b82f6; border-radius: 4px;
+    color: #e2e8f0; font-size: 13px; padding: 3px 6px; width: 120px; outline: none;
+  }
+
+  .empty-row td { text-align: center; color: #475569; padding: 40px; font-size: 14px; }
+  .refresh-info { font-size: 11px; color: #475569; }
+  #cam-countdown { color: #64748b; }
+
+  .na { color: #2d3348; font-size: 12px; }
+
+  /* Диск-бар */
+  .disk-bar-wrap { display: flex; align-items: center; gap: 6px; min-width: 120px; }
+  .disk-bar-bg {
+    flex: 1; height: 5px; background: #1e2330;
+    border-radius: 3px; overflow: hidden;
+  }
+  .disk-bar-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+  .disk-bar-fill.ok     { background: #4ade80; }
+  .disk-bar-fill.warn   { background: #fde047; }
+  .disk-bar-fill.danger { background: #f87171; }
+  .disk-pct { font-size: 11px; color: #94a3b8; white-space: nowrap; }
+
+  /* Каналы */
+  .ch-count { font-size: 13px; }
+  .ch-online { color: #4ade80; font-weight: 600; }
+  .ch-offline { color: #f87171; }
+  .ch-sep { color: #475569; }
+
+  /* Модальное окно редактирования */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.7); z-index: 1000;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: #111318; border: 1px solid #2d3348; border-radius: 12px;
+    width: 420px; max-width: 95vw;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .modal-header {
+    padding: 16px 20px; border-bottom: 1px solid #2d3348;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-header h2 { font-size: 15px; font-weight: 600; color: #f1f5f9; }
+  .modal-close { background: none; border: none; color: #64748b; font-size: 20px; cursor: pointer; line-height: 1; }
+  .modal-close:hover { color: #f87171; }
+  .modal-body { padding: 20px; }
+
+  .edit-form { display: flex; flex-direction: column; gap: 14px; }
+  .edit-form label { font-size: 12px; color: #94a3b8; display: block; margin-bottom: 5px; }
+  .edit-form input, .edit-form select {
+    width: 100%; background: #1e2330; border: 1px solid #2d3348; border-radius: 6px;
+    color: #e2e8f0; font-size: 13px; padding: 8px 10px; outline: none;
+    transition: border-color .15s;
+  }
+  .edit-form input:focus, .edit-form select:focus { border-color: #3b82f6; }
+  .edit-form .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .edit-form .form-hint { font-size: 11px; color: #475569; margin-top: 3px; }
+  .modal-footer {
+    padding: 14px 20px; border-top: 1px solid #2d3348;
+    display: flex; justify-content: flex-end; gap: 8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;gap:20px">
+    <div>
+      <h1>📹 Видеонаблюдение</h1>
+      <div class="header-sub refresh-info">Авто-обновление через <span id="cam-countdown">60</span> с</div>
+    </div>
+    <nav class="main-nav">
+      <a href="/"        class="nav-link">🖨️ Принтери</a>
+      <a href="/cameras" class="nav-link nav-active">📹 Відеонагляд</a>
+      <a href="/alerts"  class="nav-link">🔔 Сповіщення</a>
+    </nav>
+  </div>
+
+  <div class="add-bar">
+    <div id="cam-error-msg"></div>
+
+    <label>IP</label>
+    <input id="cam-ip" placeholder="192.168.1.100" onkeydown="if(event.key==='Enter')addCamera()">
+
+    <label>Место</label>
+    <input id="cam-location" placeholder="Склад" onkeydown="if(event.key==='Enter')addCamera()">
+
+    <label>Бренд</label>
+    <select id="cam-brand">
+      <option value="hikvision">Hikvision</option>
+      <option value="dahua">Dahua</option>
+    </select>
+
+    <label>Логин</label>
+    <input id="cam-user" placeholder="admin" onkeydown="if(event.key==='Enter')addCamera()">
+
+    <label>Пароль</label>
+    <input id="cam-pass" type="password" placeholder="••••••" onkeydown="if(event.key==='Enter')addCamera()">
+
+    <button class="btn btn-primary" onclick="addCamera()">+ Добавить</button>
+    <button class="btn btn-refresh" onclick="refreshAll()">↻ Обновить все</button>
+    <a href="/logout" class="btn" style="background:#374151;color:#e2e8f0;text-decoration:none;">Выйти</a>
+  </div>
+</header>
+
+<main>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>IP-адрес</th>
+          <th>Бренд</th>
+          <th>Местоположение</th>
+          <th>Модель</th>
+          <th>Каналы</th>
+          <th>Диски</th>
+          <th>Состояние</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody id="cam-tbody">
+        <tr class="empty-row"><td colspan="8">Добавьте DVR/NVR, чтобы начать мониторинг</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- Модальное окно редактирования -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="editModalTitle">Редактировать устройство</h2>
+      <button class="modal-close" onclick="closeEditModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="edit-form">
+        <div>
+          <label>Местоположение</label>
+          <input id="edit-location" placeholder="Склад, Проходная...">
+        </div>
+        <div>
+          <label>Бренд</label>
+          <select id="edit-brand">
+            <option value="hikvision">Hikvision</option>
+            <option value="dahua">Dahua</option>
+          </select>
+        </div>
+        <div class="row2">
+          <div>
+            <label>Логин</label>
+            <input id="edit-user" placeholder="admin">
+          </div>
+          <div>
+            <label>Новый пароль</label>
+            <input id="edit-pass" type="password" placeholder="Оставьте пустым — без изменений">
+            <div class="form-hint">Пустое поле — пароль не меняется</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-refresh" onclick="closeEditModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveEdit()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let camerasData  = [];
+let editIp       = null;
+let camCountdown = 60;
+let camFastPoll  = false;   // флаг: активен ли быстрый опрос
+let camPollTimer = null;    // ID таймера для clearTimeout
+
+function showError(msg) {
+  const el = document.getElementById('cam-error-msg');
+  el.textContent = msg;
+  el.style.display = msg ? 'inline' : 'none';
+}
+
+function resetCountdown() {
+  camCountdown = 60;
+  document.getElementById('cam-countdown').textContent = camCountdown;
+}
+
+// ── Рендер таблицы ────────────────────────────────────────────────────────
+
+function statusClass(status) {
+  if (!status || status === '—' || status.includes('Опрос') || status.includes('Обновление'))
+    return 'status-poll';
+  const s = status.toLowerCase();
+  if (s.includes('ошибка') || s.includes('недоступ') || s.includes('error') || s.includes('offline'))
+    return 'status-err';
+  if (s.includes('внимание') || s.includes('warn') || s.includes('диск'))
+    return 'status-warn';
+  return 'status-ok';
+}
+
+function diskBarHtml(used_gb, total_gb) {
+  if (!total_gb || total_gb === 0)
+    return '<span class="na">—</span>';
+  // Режим quota: used === total, freeSpace всегда 0 — показываем просто размер
+  if (used_gb === total_gb)
+    return `<span style="font-size:12px;color:#94a3b8">📀 ${total_gb} ГБ (quota)</span>`;
+  const pct  = Math.min(used_gb / total_gb, 1);
+  const pctN = Math.round(pct * 100);
+  const cls  = pct >= 0.9 ? 'danger' : pct >= 0.7 ? 'warn' : 'ok';
+  return `<div class="disk-bar-wrap">
+    <div class="disk-bar-bg">
+      <div class="disk-bar-fill ${cls}" style="width:${pctN}%"></div>
+    </div>
+    <span class="disk-pct">${pctN}% (${used_gb}/${total_gb} ГБ)</span>
+  </div>`;
+}
+
+function channelsHtml(online, total) {
+  if (total === null || total === undefined)
+    return '<span class="na">—</span>';
+  const off = total - (online || 0);
+  return `<span class="ch-count">
+    <span class="ch-online">${online ?? '?'}</span>
+    <span class="ch-sep">/</span>${total}
+    ${off > 0 ? `<span class="ch-offline"> (−${off})</span>` : ''}
+  </span>`;
+}
+
+function renderTable(data) {
+  camerasData = data;
+  const tbody = document.getElementById('cam-tbody');
+  if (!data.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">Добавьте DVR/NVR, чтобы начать мониторинг</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(c => {
+    const spinner   = c.polling ? '<span class="spinner"></span>' : '';
+    const sc        = statusClass(c.status);
+    const brandCls  = c.brand === 'hikvision' ? 'brand-hikvision' : 'brand-dahua';
+    const brandLabel = c.brand === 'hikvision' ? 'Hikvision' : 'Dahua';
+
+    // Цвет строки по состоянию дисков
+    let rowColor = '';
+    if (!c.polling) {
+      const s = (c.status || '').toLowerCase();
+      if (sc === 'status-err') rowColor = 'color-red';
+      else if (sc === 'status-warn') rowColor = 'color-yellow';
+      else if (sc === 'status-ok') rowColor = 'color-green';
+    }
+
+    return `<tr class="${rowColor}" data-ip="${c.ip}">
+      <td><code style="font-size:12px;color:#7dd3fc">${c.ip}</code></td>
+      <td><span class="brand-badge ${brandCls}">${brandLabel}</span></td>
+      <td>
+        <span class="editable" onclick="editLocationInline('${c.ip}', this)">
+          ${c.location || '<span style="color:#475569">—</span>'}
+        </span>
+      </td>
+      <td>${spinner}${c.model || '<span class="na">—</span>'}</td>
+      <td>${channelsHtml(c.channels_online, c.channels_total)}</td>
+      <td>${diskBarHtml(c.disk_used_gb, c.disk_total_gb)}</td>
+      <td class="${sc}">${c.status || '—'}</td>
+      <td>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-edit"    onclick="openEditModal('${c.ip}')" title="Редактировать">✎ Изменить</button>
+          <button class="btn btn-sm btn-edit"    onclick="refreshOne('${c.ip}')"   title="Обновить">↻</button>
+          <button class="btn btn-sm btn-danger"  onclick="deleteCamera('${c.ip}')" title="Удалить">✕</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Загрузка ──────────────────────────────────────────────────────────────
+
+async function load() {
+  try {
+    const r    = await fetch('/cameras/list');
+    const data = await r.json();
+    renderTable(data);
+    if (data.some(c => c.polling)) startFastPoll();
+  } catch(e) {}
+}
+
+// ── CRUD ──────────────────────────────────────────────────────────────────
+
+async function addCamera() {
+  const ip    = document.getElementById('cam-ip').value.trim();
+  const loc   = document.getElementById('cam-location').value.trim();
+  const brand = document.getElementById('cam-brand').value;
+  const user  = document.getElementById('cam-user').value.trim();
+  const pass  = document.getElementById('cam-pass').value;
+  if (!ip)   { showError('Введите IP-адрес'); return; }
+  if (!user) { showError('Введите логин'); return; }
+  if (!pass) { showError('Введите пароль'); return; }
+  showError('');
+
+  const body = new URLSearchParams({ ip, location: loc, brand, username: user, password: pass });
+  const r    = await fetch('/cameras/add', { method: 'POST', body });
+  const data = await r.json();
+  if (data.error) { showError(data.error); return; }
+
+  document.getElementById('cam-ip').value       = '';
+  document.getElementById('cam-location').value = '';
+  document.getElementById('cam-user').value     = '';
+  document.getElementById('cam-pass').value     = '';
+  resetCountdown();
+  load();
+}
+
+async function deleteCamera(ip) {
+  if (!confirm(`Удалить устройство ${ip}?`)) return;
+  await fetch('/cameras/delete/' + ip, { method: 'POST' });
+  resetCountdown(); load();
+}
+
+async function refreshAll() {
+  fetch('/cameras/refresh', { method: 'POST' });
+  resetCountdown(); load(); startFastPoll();
+}
+
+async function refreshOne(ip) {
+  fetch('/cameras/refresh/' + ip, { method: 'POST' });
+  resetCountdown(); load(); startFastPoll();
+}
+
+// ── Inline редактирование местоположения ──────────────────────────────────
+
+function editLocationInline(ip, span) {
+  const current = span.textContent.trim() === '—' ? '' : span.textContent.trim();
+  const input   = document.createElement('input');
+  input.className   = 'inline-input';
+  input.value       = current;
+  input.placeholder = 'Склад';
+  span.replaceWith(input);
+  input.focus();
+  async function save() {
+    await fetch('/cameras/update/' + ip, {
+      method: 'POST', body: new URLSearchParams({ location: input.value.trim() })
+    });
+    resetCountdown(); load();
+  }
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => { if (e.key==='Enter') save(); if (e.key==='Escape') load(); });
+}
+
+// ── Модальное окно редактирования ─────────────────────────────────────────
+
+function openEditModal(ip) {
+  editIp = ip;
+  const c = camerasData.find(x => x.ip === ip);
+  if (!c) return;
+  document.getElementById('editModalTitle').textContent = `Редактировать — ${ip}`;
+  document.getElementById('edit-location').value = c.location || '';
+  document.getElementById('edit-brand').value    = c.brand    || 'hikvision';
+  document.getElementById('edit-user').value     = c.username || '';
+  document.getElementById('edit-pass').value     = '';
+  document.getElementById('editModal').classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('open');
+  editIp = null;
+}
+
+document.getElementById('editModal').addEventListener('click', function(e) {
+  if (e.target === this) closeEditModal();
+});
+
+async function saveEdit() {
+  if (!editIp) return;
+  const params = new URLSearchParams({
+    location: document.getElementById('edit-location').value.trim(),
+    brand:    document.getElementById('edit-brand').value,
+    username: document.getElementById('edit-user').value.trim(),
+  });
+  const pass = document.getElementById('edit-pass').value;
+  if (pass) params.append('password', pass);
+
+  const r    = await fetch('/cameras/update/' + editIp, { method: 'POST', body: params });
+  const data = await r.json();
+  if (data.error) { alert(data.error); return; }
+  closeEditModal();
+  resetCountdown(); load();
+}
+
+// ── Fast poll ─────────────────────────────────────────────────────────────
+
+function startFastPoll() {
+  if (camFastPoll) return;
+  camFastPoll = true;
+  async function poll() {
+    if (!camFastPoll) return;
+    await load();
+    if (!camerasData.some(c => c.polling)) {
+      camFastPoll  = false;
+      camPollTimer = null;
+      camCountdown = 60;
+      return;
+    }
+    camPollTimer = setTimeout(poll, 2000);
+  }
+  camPollTimer = setTimeout(poll, 2000);
+}
+
+function tick() {
+  document.getElementById('cam-countdown').textContent = camCountdown;
+  if (camCountdown <= 0) {
+    camCountdown = 60;
+    fetch('/cameras/refresh', { method: 'POST' });
+    load();
+    startFastPoll();
+  } else {
+    camCountdown--;
+  }
+}
+setInterval(tick, 1000);
+load();
+</script>
+</body>
+</html>
